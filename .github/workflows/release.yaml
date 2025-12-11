@@ -43,11 +43,13 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Set up Helm
         uses: azure/setup-helm@v3
@@ -58,7 +60,6 @@ jobs:
         run: |
           sed -i "s/^version:.*/version: ${{ steps.version.outputs.VERSION }}/" chart/Chart.yaml
           sed -i "s/^appVersion:.*/appVersion: \"${{ steps.version.outputs.VERSION }}\"/" chart/Chart.yaml
-          cat chart/Chart.yaml
 
       - name: Package Helm chart
         run: helm package ./chart
@@ -85,7 +86,6 @@ jobs:
             ### Installation
 
             ```bash
-            # Install via Helm OCI
             helm install infra-operator oci://ghcr.io/andrebassi/infra-operator \
               --namespace infra-operator \
               --create-namespace
@@ -101,12 +101,5 @@ jobs:
 
             - [English](https://infra-operator.runner.codes)
             - [Português](https://infra-operator.runner.codes/pt-BR/)
-
-            ### Resources
-
-            - 30 AWS CRDs supported (VPC, EC2, RDS, S3, Lambda, EKS, etc.)
-            - Clean Architecture design
-            - Drift detection
-            - Prometheus metrics
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
