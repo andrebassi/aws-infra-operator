@@ -1,15 +1,20 @@
 ---
 title: 'Introdução'
-description: 'Gerencie infraestrutura AWS diretamente do Kubernetes com o Infra Operator'
+description: 'Gerencie infraestrutura AWS como operador Kubernetes ou CLI standalone'
 slug: /
 sidebar_position: 1
 ---
 
-Gerencie recursos AWS diretamente do Kubernetes usando Custom Resources e GitOps.
+Gerencie recursos AWS usando CRDs/GitOps do Kubernetes ou CLI standalone.
 
 ## O que é o Infra Operator?
 
-**Infra Operator** é um operador Kubernetes que permite provisionar e gerenciar recursos AWS usando Custom Resource Definitions (CRDs). Em vez de usar ferramentas separadas como Terraform ou CloudFormation, você pode gerenciar sua infraestrutura AWS usando `kubectl` e ferramentas GitOps como ArgoCD.
+**Infra Operator** é uma ferramenta production-ready para gerenciar recursos de infraestrutura AWS. Pode rodar em dois modos:
+
+- **Operador Kubernetes**: Gerencie recursos AWS usando CRDs, kubectl e GitOps (ArgoCD, Flux)
+- **CLI Standalone**: Gerencie recursos AWS diretamente pela linha de comando, sem Kubernetes
+
+Em vez de usar ferramentas separadas como Terraform ou CloudFormation, você pode gerenciar sua infraestrutura AWS usando manifestos YAML familiares.
 
 ### Principais Benefícios
 
@@ -206,7 +211,8 @@ Implementação seguindo princípios de **Clean Architecture** para código test
 
 ## Próximos Passos
 
-- [Instalação](/installation) - Como instalar o Infra Operator
+- [Instalação](/installation) - Instalar como operador Kubernetes ou CLI
+- [Modo CLI](/features/cli) - Usar sem Kubernetes
 - [Início Rápido](/quickstart) - Primeiros passos
 - [Serviços AWS](/services/networking/vpc) - Documentação dos serviços
 - [Referência da API](/api-reference/overview) - Referência completa da API

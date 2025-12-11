@@ -1,11 +1,16 @@
 ---
 title: 'Instalação'
-description: 'Instale o Infra Operator via Helm Chart'
+description: 'Instale o Infra Operator como operador Kubernetes ou CLI standalone'
 ---
 
-## Pré-requisitos
+O Infra Operator pode ser instalado de duas formas:
 
-Antes de instalar o Infra Operator, certifique-se de ter:
+- **Helm Chart** - Deploy como operador Kubernetes com CRDs
+- **CLI Standalone** - Use diretamente pela linha de comando sem Kubernetes
+
+## Opção 1: Instalação via Helm (Kubernetes)
+
+### Pré-requisitos
 
 - **Kubernetes 1.28+** - Cluster Kubernetes funcionando
 - **Helm 3.x** - Gerenciador de pacotes Kubernetes
@@ -13,48 +18,54 @@ Antes de instalar o Infra Operator, certifique-se de ter:
 - **Credenciais AWS** - Credenciais AWS ou LocalStack para testes
 
 :::tip
-
 Para desenvolvimento local, recomendamos usar **LocalStack** para emular serviços AWS sem custo.
-
 :::
 
-## Instalação via Helm
-
-### 1. Clone o Repositório
+### Instalação Rápida do GHCR
 
 **Comando:**
 
 ```bash
-git clone https://github.com/andrebassi/infra-operator-aws.git
-cd infra-operator
+helm install infra-operator oci://ghcr.io/andrebassi/infra-operator \
+  --namespace infra-operator \
+  --create-namespace
 ```
 
-### 2. Instale via Helm
+### Instalar a partir do Fonte
+
+**Comando:**
+
+```bash
+git clone https://github.com/andrebassi/aws-infra-operator.git
+cd aws-infra-operator
+```
+
+### Instale via Helm
 
 **Comando:**
 
 ```bash
 # Instalar com valores padrão
 helm install infra-operator ./chart \
-  --namespace iop-system \
+  --namespace infra-operator \
   --create-namespace
 
 # Ou com valores personalizados
 helm install infra-operator ./chart \
-  --namespace iop-system \
+  --namespace infra-operator \
   --create-namespace \
   --set image.tag=latest \
   --set replicaCount=2 \
   --set resources.requests.memory=256Mi
 ```
 
-### 3. Verificar Instalação
+### Verificar Instalação
 
 **Comando:**
 
 ```bash
 # Verificar pods
-kubectl get pods -n iop-system
+kubectl get pods -n infra-operator
 
 # Deve mostrar algo como:
 # NAME                              READY   STATUS    RESTARTS   AGE
@@ -64,7 +75,7 @@ kubectl get pods -n iop-system
 kubectl get crds | grep aws-infra-operator.runner.codes
 
 # Verificar logs
-kubectl logs -n iop-system deploy/infra-operator
+kubectl logs -n infra-operator deploy/infra-operator
 ```
 
 <Check>
@@ -98,7 +109,7 @@ spec:
 kubectl create secret generic aws-credentials \
   --from-literal=aws-access-key-id=YOUR_ACCESS_KEY \
   --from-literal=aws-secret-access-key=YOUR_SECRET_KEY \
-  -n iop-system
+  -n infra-operator
 ```
 
 **Exemplo:**
@@ -728,21 +739,65 @@ Por padrão, deletar um CR também **deleta o recurso AWS**. Use `deletionPolicy
 kubectl delete -f samples/
 
 # Desinstalar Helm chart
-helm uninstall infra-operator -n iop-system
+helm uninstall infra-operator -n infra-operator
 
 # Deletar CRDs (opcional)
 kubectl delete crd $(kubectl get crd | grep aws-infra-operator.runner.codes | awk '{print $1}')
 
 # Deletar namespace
-kubectl delete namespace iop-system
+kubectl delete namespace infra-operator
 ```
+
+## Opção 2: Instalação CLI (Standalone)
+
+Use a CLI quando você não tem ou não precisa de um cluster Kubernetes.
+
+### Compilar a partir do Fonte
+
+**Comando:**
+
+```bash
+git clone https://github.com/andrebassi/aws-infra-operator.git
+cd aws-infra-operator
+
+# Compilar
+CGO_ENABLED=0 go build -o infra-operator main.go
+
+# Instalar (opcional)
+sudo mv infra-operator /usr/local/bin/
+```
+
+### Uso
+
+**Comando:**
+
+```bash
+# Configurar credenciais AWS
+export AWS_ACCESS_KEY_ID="sua-chave"
+export AWS_SECRET_ACCESS_KEY="seu-secret"
+export AWS_REGION="us-east-1"
+
+# Aplicar recursos
+infra-operator apply -f infraestrutura.yaml
+
+# Ver plano antes de aplicar
+infra-operator plan -f infraestrutura.yaml
+
+# Listar recursos gerenciados
+infra-operator get
+
+# Deletar recursos
+infra-operator delete -f infraestrutura.yaml
+```
+
+Para documentação completa da CLI, veja [Modo CLI](/features/cli).
 
 ## Próximos Passos
 
+- [Modo CLI](/features/cli) - Documentação completa da CLI
 - [Rede](/services/networking/vpc)
 - [Armazenamento](/services/storage/s3)
 - [Computação](/services/compute/ec2)
-- [Todos os Serviços](/services/networking/vpc)
 
 ## Solução de Problemas
 
@@ -752,10 +807,10 @@ kubectl delete namespace iop-system
 
 ```bash
 # Ver logs do operador
-kubectl logs -n iop-system deploy/infra-operator --tail=100
+kubectl logs -n infra-operator deploy/infra-operator --tail=100
 
 # Ver eventos
-kubectl get events -n iop-system --sort-by='.lastTimestamp'
+kubectl get events -n infra-operator --sort-by='.lastTimestamp'
 ```
 
 ### AWSProvider não está Ready

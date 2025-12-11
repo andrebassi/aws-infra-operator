@@ -40,7 +40,7 @@ sudo mv infra-operator /usr/local/bin/
 
 ```bash
 # Linux/macOS
-curl -LO https://github.com/andrebassi/infra-operator-aws/releases/latest/download/infra-operator-$(uname -s)-$(uname -m)
+curl -LO https://github.com/andrebassi/aws-infra-operator/releases/latest/download/infra-operator-$(uname -s)-$(uname -m)
 chmod +x infra-operator-*
 sudo mv infra-operator-* /usr/local/bin/infra-operator
 ```
