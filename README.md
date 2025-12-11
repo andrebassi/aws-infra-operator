@@ -10,6 +10,8 @@
 
 **Documentation:** https://infra-operator.runner.codes
 
+📖 [Read the full documentation →](https://infra-operator.runner.codes)
+
 ## What is Infra Operator?
 
 Infra Operator is a **production-ready tool** for managing AWS infrastructure resources. Define your infrastructure using declarative YAML and deploy it using:
