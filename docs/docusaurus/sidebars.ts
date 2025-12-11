@@ -6,7 +6,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Getting Started',
       collapsed: false,
-      items: ['introduction', 'installation', 'features/cli', 'quickstart', 'architecture'],
+      items: ['introduction', 'quickstart', 'installation', 'architecture'],
     },
     {
       type: 'category',
@@ -101,6 +101,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Features',
       items: [
+        'features/cli',
         'features/api',
         'features/drift-detection',
         'features/prometheus-metrics',
