@@ -1,316 +1,342 @@
 # Infra Operator
 
-**Gerencie Infraestrutura AWS diretamente do Kubernetes**
+**Manage AWS Infrastructure with Kubernetes or CLI using YAML**
 
-Um operador Kubernetes que permite gerenciar recursos AWS de forma declarativa usando Custom Resources (CRs). Provisione e gerencie VPCs, Subnets, S3, RDS, EC2, SQS e mais usando ferramentas nativas do Kubernetes.
+[![Release](https://img.shields.io/github/v/release/andrebassi/aws-infra-operator?color=green)](https://github.com/andrebassi/aws-infra-operator/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-infra--operator.runner.codes-blue)](https://infra-operator.runner.codes)
 
-## 🚀 Features
+**Website:** https://infra-operator-website.pages.dev
+**Documentation:** https://infra-operator.runner.codes
 
-- **Declarativo**: Defina recursos AWS como manifests Kubernetes
-- **GitOps Ready**: Integração com ArgoCD, Flux e outras ferramentas GitOps
-- **Múltiplos Métodos de Autenticação**: IRSA, credenciais estáticas, AssumeRole
-- **Ciclo de Vida Completo**: Criação, atualização e deleção controlada
-- **Production Ready**: Finalizers, status conditions, validação, RBAC
-- **Clean Architecture**: Código testável, manutenível e extensível
+## What is Infra Operator?
 
-## 📦 Serviços AWS Suportados (18 Total)
+Infra Operator is a **production-ready tool** for managing AWS infrastructure resources. Define your infrastructure using declarative YAML and deploy it using:
 
-### ✅ Production Ready (LocalStack Community)
+- **Kubernetes Operator**: Manage AWS resources as CRDs with kubectl, Helm, ArgoCD, or any GitOps tool
+- **Standalone CLI**: Manage AWS resources directly from command line, without Kubernetes
 
-| Categoria | Serviços |
-|-----------|----------|
-| **Networking** | VPC, Subnet, Internet Gateway, NAT Gateway |
+## Why Infra Operator?
+
+| Feature | Description |
+|---------|-------------|
+| **Declarative YAML** | Define AWS resources as simple YAML manifests |
+| **GitOps Ready** | Works with ArgoCD, Flux, and any GitOps workflow |
+| **Two Modes** | Kubernetes Operator or standalone CLI |
+| **30+ AWS Services** | VPC, EC2, RDS, S3, Lambda, EKS, and more |
+| **Clean Architecture** | Testable, maintainable, and extensible codebase |
+| **Production Ready** | Finalizers, status conditions, RBAC, metrics |
+
+## Supported AWS Services (30+)
+
+| Category | Services |
+|----------|----------|
+| **Networking** | VPC, Subnet, Internet Gateway, NAT Gateway, Route Table, Security Group, Elastic IP, ALB, NLB |
+| **Compute** | EC2 Instance, Lambda, EKS Cluster, ECS Cluster, ComputeStack |
 | **Storage** | S3 Bucket |
-| **Database** | DynamoDB Table |
-| **Compute** | EC2 Instance, Lambda Function |
-| **Messaging** | SQS Queue, SNS Topic |
-| **Security** | IAM Role, Secrets Manager, KMS Key |
-
-### ⚠️ Requer LocalStack Pro ou AWS Real
-
-| Categoria | Serviços |
-|-----------|----------|
-| **Database** | RDS Instance |
+| **Database** | RDS Instance, DynamoDB Table, ElastiCache |
 | **Container** | ECR Repository |
-| **Caching** | ElastiCache Cluster |
+| **Messaging** | SQS Queue, SNS Topic |
+| **Security** | IAM Role, Secrets Manager, KMS Key, ACM Certificate |
+| **CDN & DNS** | CloudFront, Route53 Hosted Zone, Route53 Record Set |
+| **API** | API Gateway |
 
-## 🎯 Quick Start
+## Quick Start
 
-### Pré-requisitos
-
-- Kubernetes 1.28+
-- kubectl configurado
-- Conta AWS com permissões IAM (ou LocalStack para desenvolvimento)
-
-### Instalação
+### Option 1: Kubernetes (Helm)
 
 ```bash
-# 1. Instalar CRDs
-kubectl apply -f config/crd/bases/
+# Install with Helm
+helm install infra-operator oci://ghcr.io/andrebassi/infra-operator \
+  --namespace infra-operator \
+  --create-namespace
 
-# 2. Deploy do operador
-kubectl apply -f config/manager/namespace.yaml
-kubectl apply -f config/rbac/
-kubectl apply -f config/manager/deployment.yaml
-
-# 3. Verificar instalação
-kubectl get pods -n infra-operator-system
+# Verify installation
+kubectl get pods -n infra-operator
+kubectl get crds | grep aws-infra-operator
 ```
 
-Ou use o Makefile:
+### Option 2: CLI (Standalone)
 
 ```bash
-make install-complete
+# Clone and build
+git clone https://github.com/andrebassi/aws-infra-operator.git
+cd aws-infra-operator
+CGO_ENABLED=0 go build -o infra.operator main.go
+
+# Apply resources
+./infra.operator apply -f infrastructure.yaml
 ```
 
-### Exemplo: Criar VPC e Subnet
+## Usage
+
+### 1. Create AWS Provider
 
 ```yaml
-# 1. AWS Provider (Credenciais)
+# aws-provider.yaml
 apiVersion: aws-infra-operator.runner.codes/v1alpha1
 kind: AWSProvider
 metadata:
-  name: my-aws
+  name: aws-production
 spec:
   region: us-east-1
-  roleARN: arn:aws:iam::123456789012:role/infra-operator-role
+  credentialsSecret:
+    name: aws-credentials
+    namespace: infra-operator
+```
 
----
-# 2. VPC
+### 2. Define Infrastructure
+
+```yaml
+# vpc.yaml
 apiVersion: aws-infra-operator.runner.codes/v1alpha1
 kind: VPC
 metadata:
   name: production-vpc
 spec:
   providerRef:
-    name: my-aws
+    name: aws-production
   cidrBlock: "10.0.0.0/16"
   enableDnsSupport: true
   enableDnsHostnames: true
   tags:
-    Name: production-vpc
-
----
-# 3. Subnet
-apiVersion: aws-infra-operator.runner.codes/v1alpha1
-kind: Subnet
-metadata:
-  name: public-subnet-1a
-spec:
-  providerRef:
-    name: my-aws
-  vpcID: vpc-xxx  # Auto-preenchido pelo status da VPC
-  cidrBlock: "10.0.1.0/24"
-  availabilityZone: us-east-1a
-  mapPublicIpOnLaunch: true
+    Environment: production
+    ManagedBy: infra-operator
 ```
+
+### 3. Deploy
+
+**Kubernetes:**
+```bash
+kubectl apply -f aws-provider.yaml
+kubectl apply -f vpc.yaml
+kubectl get vpc
+```
+
+**CLI:**
+```bash
+export AWS_ACCESS_KEY_ID="your-key"
+export AWS_SECRET_ACCESS_KEY="your-secret"
+export AWS_REGION="us-east-1"
+
+./infra.operator apply -f vpc.yaml
+./infra.operator get
+```
+
+## Helm Installation
+
+### From GHCR (Recommended)
 
 ```bash
-kubectl apply -f infrastructure.yaml
-
-# Verificar status
-kubectl get vpc,subnet
-kubectl describe vpc production-vpc
+helm install infra-operator oci://ghcr.io/andrebassi/infra-operator \
+  --namespace infra-operator \
+  --create-namespace
 ```
 
-## 📚 Documentação
-
-### Início Rápido
-- **[Quick Start](docs/QUICKSTART.md)** - Tutorial de 5 minutos
-- **[Development](docs/DEVELOPMENT.md)** - Desenvolvimento local com LocalStack
-
-### Documentação por Serviço
-
-Consulte a documentação completa de cada serviço:
-
-**Networking:**
-- [VPC](docs/services/networking/vpc.mdx) - Virtual Private Cloud
-- [Subnet](docs/services/networking/subnet.mdx) - Sub-redes
-- [Internet Gateway](docs/services/networking/internet-gateway.mdx) - Gateway de internet
-- [NAT Gateway](docs/services/networking/nat-gateway.mdx) - NAT para sub-redes privadas
-
-**Storage:**
-- [S3 Bucket](docs/services/storage/s3.mdx) - Object storage
-
-**Database:**
-- [DynamoDB](docs/services/database/dynamodb.mdx) - NoSQL database
-- [RDS](docs/services/database/rds.mdx) - Relational database ⚠️ Pro
-
-**Compute:**
-- [EC2](docs/services/compute/ec2.mdx) - Virtual machines
-- [Lambda](docs/services/compute/lambda.mdx) - Serverless functions
-
-**Messaging:**
-- [SQS](docs/services/messaging/sqs.mdx) - Message queues
-- [SNS](docs/services/messaging/sns.mdx) - Pub/Sub notifications
-
-**Security:**
-- [IAM Role](docs/services/security/iam.mdx) - Identity and access
-- [Secrets Manager](docs/services/security/secrets-manager.mdx) - Secrets storage
-- [KMS](docs/services/security/kms.mdx) - Encryption keys
-
-**Container:**
-- [ECR](docs/services/container/ecr.mdx) - Container registry ⚠️ Pro
-
-**Caching:**
-- [ElastiCache](docs/services/caching/elasticache.mdx) - In-memory cache ⚠️ Pro
-
-### Guias Completos
-- **[Services Guide](docs/SERVICES_GUIDE.md)** - Documentação all-in-one de todos os serviços
-- **[Architecture](docs/ARCHITECTURE.md)** - Arquitetura do sistema
-- **[Clean Architecture](docs/CLEAN_ARCHITECTURE.md)** - Implementação Clean Architecture
-- **[Deployment](docs/DEPLOYMENT_GUIDE.md)** - Deploy em produção
-
-### Documentação Interativa (Mintlify)
+### From Source
 
 ```bash
-npm i -g mintlify
-cd docs
-mintlify dev
-# Acesse: http://localhost:3000
+git clone https://github.com/andrebassi/aws-infra-operator.git
+cd aws-infra-operator
+
+helm install infra-operator ./chart \
+  --namespace infra-operator \
+  --create-namespace
 ```
 
-## 🏗️ Arquitetura
+### Configuration Values
 
-O Infra Operator segue princípios de **Clean Architecture**:
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `image.registry` | `ghcr.io` | Container registry |
+| `image.repository` | `andrebassi/aws-infra-operator` | Image repository |
+| `image.tag` | `latest` | Image tag |
+| `replicaCount` | `1` | Number of replicas |
+| `resources.requests.memory` | `128Mi` | Memory request |
+| `resources.limits.memory` | `512Mi` | Memory limit |
 
-```
-┌─────────────────────────────────┐
-│   Controllers (Kubernetes)       │
-│   - VPCReconciler               │
-│   - SubnetReconciler            │
-└────────────┬────────────────────┘
-             │
-┌────────────▼────────────────────┐
-│   Use Cases (Business Logic)    │
-│   - CreateVPC, UpdateVPC        │
-└────────────┬────────────────────┘
-             │
-┌────────────▼────────────────────┐
-│   Ports (Interfaces)            │
-│   - AWSClientPort               │
-└────────────┬────────────────────┘
-             │
-┌────────────▼────────────────────┐
-│   Adapters (AWS SDK)            │
-│   - EC2Adapter, S3Adapter       │
-└─────────────────────────────────┘
+### Custom Values
+
+```bash
+helm install infra-operator oci://ghcr.io/andrebassi/infra-operator \
+  --namespace infra-operator \
+  --create-namespace \
+  --set replicaCount=2 \
+  --set resources.requests.memory=256Mi
 ```
 
-**Benefícios:**
-- ✅ Testabilidade (domain isolado)
-- ✅ Manutenibilidade (separação de responsabilidades)
-- ✅ Flexibilidade (fácil adicionar novos serviços)
-- ✅ Independência (sem acoplamento com frameworks)
+## Authentication
 
-## 🔐 Autenticação
-
-### IRSA (Recomendado para EKS)
+### IRSA (Recommended for EKS)
 
 ```yaml
 apiVersion: aws-infra-operator.runner.codes/v1alpha1
 kind: AWSProvider
 metadata:
-  name: aws-prod
+  name: aws-production
 spec:
   region: us-east-1
-  roleARN: arn:aws:iam::ACCOUNT_ID:role/infra-operator-role
+  roleARN: arn:aws:iam::123456789012:role/infra-operator-role
 ```
 
-### Credenciais Estáticas (Desenvolvimento)
+### Static Credentials
+
+```bash
+# Create secret
+kubectl create secret generic aws-credentials \
+  --namespace infra-operator \
+  --from-literal=AWS_ACCESS_KEY_ID=your-key \
+  --from-literal=AWS_SECRET_ACCESS_KEY=your-secret
+```
 
 ```yaml
 apiVersion: aws-infra-operator.runner.codes/v1alpha1
 kind: AWSProvider
 metadata:
-  name: aws-dev
+  name: aws-production
 spec:
-  region: us-west-2
-  accessKeyIDRef:
-    name: aws-creds
-    key: access-key-id
-  secretAccessKeyRef:
-    name: aws-creds
-    key: secret-access-key
+  region: us-east-1
+  credentialsSecret:
+    name: aws-credentials
+    namespace: infra-operator
 ```
 
-## 🛠️ Desenvolvimento
+### LocalStack (Development)
 
-### Desenvolvimento Local com LocalStack
+```yaml
+apiVersion: aws-infra-operator.runner.codes/v1alpha1
+kind: AWSProvider
+metadata:
+  name: localstack
+spec:
+  region: us-east-1
+  endpoint: http://localstack.default.svc.cluster.local:4566
+  credentialsSecret:
+    name: aws-credentials
+    namespace: infra-operator
+```
+
+## Architecture
+
+Infra Operator follows **Clean Architecture** principles:
+
+```
+┌─────────────────────────────────────────┐
+│   Controllers (Kubernetes Reconcilers)  │
+│   - VPCReconciler, EC2Reconciler, etc.  │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│   Use Cases (Business Logic)            │
+│   - CreateVPC, UpdateEC2, DeleteS3      │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│   Ports (Interfaces)                    │
+│   - VPCPort, EC2Port, S3Port            │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│   Adapters (AWS SDK v2)                 │
+│   - VPCAdapter, EC2Adapter, S3Adapter   │
+└─────────────────────────────────────────┘
+```
+
+## Project Structure
+
+```
+aws-infra-operator/
+├── api/v1alpha1/           # CRD type definitions (30 resources)
+├── controllers/            # Kubernetes reconcilers
+├── internal/
+│   ├── adapters/aws/       # AWS SDK implementations
+│   ├── domain/             # Business logic
+│   ├── ports/              # Interface definitions
+│   └── usecases/           # Use case orchestration
+├── pkg/
+│   ├── drift/              # Drift detection
+│   └── metrics/            # Prometheus metrics
+├── chart/                  # Helm chart
+│   ├── crds/               # CRD manifests
+│   ├── templates/          # Kubernetes resources
+│   └── values.yaml         # Default configuration
+├── samples/                # Example resources
+├── Dockerfile
+├── go.mod
+└── main.go
+```
+
+## Development
+
+### Prerequisites
+
+- Go 1.23+
+- Docker
+- kubectl
+- Helm 3.x
+
+### Build
 
 ```bash
-# Setup completo (LocalStack + tools)
-task setup
+# Build binary
+CGO_ENABLED=0 go build -o infra.operator main.go
 
-# Rodar operador localmente
-task run:local
+# Build Docker image
+docker build -t infra-operator:dev .
 
-# Rodar testes
-task test:all
+# Run locally
+./infra.operator
 ```
 
-### Build e Deploy
+### Testing with LocalStack
 
 ```bash
-# Build
-task build              # Build binário
-task docker:build       # Build imagem Docker
+# Start LocalStack
+docker run -d --name localstack \
+  -p 4566:4566 \
+  localstack/localstack
 
-# Deploy
-task k8s:deploy        # Deploy no cluster
-task samples:apply     # Deploy recursos de exemplo
-
-# Logs
-task k8s:logs          # Ver logs do operador
+# Apply samples
+kubectl apply -f samples/
 ```
 
-Veja mais detalhes em [Development Guide](docs/DEVELOPMENT.md).
+## Documentation
 
-## 🗺️ Roadmap
+Full documentation available at [infra-operator.runner.codes](https://infra-operator.runner.codes)
 
-### ✅ Concluído
-- [x] Core operator framework com Clean Architecture
-- [x] 14 serviços AWS funcionando no LocalStack Community
-- [x] 3 serviços AWS para LocalStack Pro/AWS Real
-- [x] Documentação completa (Markdown + Mintlify)
-- [x] Testes de integração com LocalStack
+- [Installation](https://infra-operator.runner.codes/installation)
+- [Quick Start](https://infra-operator.runner.codes/quickstart)
+- [CLI Mode](https://infra-operator.runner.codes/features/cli)
+- [AWS Services](https://infra-operator.runner.codes/services/networking/vpc)
+- [API Reference](https://infra-operator.runner.codes/api-reference/overview)
 
-### 🚧 Em Progresso
-- [ ] Validation webhooks
-- [ ] Prometheus metrics
-- [ ] Helm chart
-- [ ] E2E test suite
+## Troubleshooting
 
-### 📋 Planejado
-- [ ] Mais serviços AWS (CloudFront, Route53, ALB, etc.)
-- [ ] Multi-region resource management
-- [ ] Cost estimation em status
-- [ ] Drift detection e reconciliação
+### Pods not starting
 
-## 🤝 Contribuindo
+```bash
+kubectl logs -n infra-operator deploy/infra-operator --tail=100
+kubectl get events -n infra-operator --sort-by='.lastTimestamp'
+```
 
-Contribuições são bem-vindas! Áreas para melhorias:
+### AWSProvider not Ready
 
-1. **Novos Serviços AWS**: CloudFront, Route53, ALB, etc.
-2. **Webhooks**: Admission webhooks para validação
-3. **Metrics**: Export de métricas Prometheus
-4. **Testes**: Mais testes unitários e E2E
-5. **Documentação**: Mais exemplos e casos de uso
+```bash
+kubectl describe awsprovider aws-production
+aws sts get-caller-identity --region us-east-1
+```
 
-## 📄 Licença
+### Resources stuck in NotReady
 
-MIT License - Veja arquivo LICENSE
+```bash
+kubectl describe vpc production-vpc
+kubectl get events --field-selector involvedObject.name=production-vpc
+```
 
-## 🙏 Agradecimentos
+## License
 
-Construído com:
-- [Kubebuilder](https://book.kubebuilder.io/) - Framework para operadores
-- [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime) - Controller library
-- [AWS SDK for Go v2](https://aws.github.io/aws-sdk-go-v2/) - Cliente AWS API
+[MIT](LICENSE)
 
----
+## Author
 
-**Versão:** v1.0.0
-**Última Atualização:** 2025-11-22
-
-Para suporte, issues ou contribuições, consulte a [documentação completa](docs/).
+Developed by [André Bassi](https://andrebassi.com.br)
